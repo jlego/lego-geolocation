@@ -2,18 +2,18 @@
  * 组件类: 地理位置选择器
  * 作者: yuronghui
  * 创建日期: 2017/5/29
+ * data{address: '', lng: 0, lat: 0}
  */
 import './asset/index.scss';
+import MapView from './map';
 
 class ComView extends Lego.UI.Baseview {
     constructor(opts = {}) {
         const options = {
-            rootId: 0,
-            fieldName: 'key',
-            name: ['province', 'city', 'area'], //表单域名称 国家country, 省province, 市city, 区area
-            placeholder: ['请选择省份', '请选择城市', '请选择区域'],
-            value: [],
-            selectOpts: {},
+            name: '',
+            mapApi: '',
+            placeholder: '请标注地理位置',
+            data: {},
             onChange(){}
         };
         Object.assign(options, opts);
@@ -22,62 +22,65 @@ class ComView extends Lego.UI.Baseview {
     components(){
         let opts = this.options,
             that = this;
-        if(opts.data){
-            function filterData(pId){
-                let newData = [],
-                    data = opts.data[pId];
-                for(let key in data){
-                    newData.push({
-                        key: key,
-                        value: data[key]
-                    });
-                }
-                return newData;
+        this.addCom({
+            el: '#inputs_' + opts.vid,
+            name: opts.name,
+            disabled: opts.disabled,  //是否禁用状态，默认为 false
+            readonly: opts.readonly,
+            placeholder: opts.placeholder,
+            size: opts.size,
+            value: opts.data.address || '',
+            nextAddon: hx`<i class="anticon anticon-environment-o"></i>`,
+            onChange(self, value, event){
+                if(typeof opts.onChange == 'function') opts.onChange(that, value);
             }
-            function updateSelect(name, parentId){
-                let index = opts.name.indexOf(name),
-                    theData = filterData(parentId);
-                if(index > -1){
-                    let selectsView = Lego.getView('#selects_' + name);
-                    if(selectsView){
-                        selectsView.options.value = [];
-                        selectsView.options.data = theData;
-                        selectsView.refresh();
-                        // if(!theData.length){
-                        //     selectsView.$el.hide();
-                        // }else{
-                        //     selectsView.$el.show();
-                        // }
-                        updateSelect(opts.name[index + 1], 0);
-                    }
-                }
-            }
-            opts.name.forEach((value, index) => {
-                that.addCom(Object.assign({
-                    el: '#selects_' + value,
-                    name: value,
-                    fieldName: opts.fieldName,
-                    placeholder: opts.placeholder[index],
-                    data: !index ? filterData(opts.rootId) : [],
-                    onChange(self, result) {
-                        updateSelect(opts.name[index + 1], result.key);
-                        if(typeof opts.onChange == 'function') opts.onChange(that, result);
-                    }
-                }, opts.selectOpts));
-            });
-        }
+        });
     }
     render() {
-        let opts = this.options,
-            vDom = hx`<div></div>`;
-        if(opts.data){
-            vDom = hx`
-            <div class="lego-area-picker">
-                ${opts.name.map(value => hx`<selects id="selects_${value}"></selects>`)}
-            </div>
-            `;
-        }
+        let opts = this.options;
+        let vDom = hx`
+        <div class="lego-geolocation">
+            <input type="hidden" name="hidden_${opts.name}" id="lnglat_${opts.vid}" value="${opts.data.lnglat}">
+            <inputs id="inputs_${opts.vid}"></inputs>
+        </div>
+        `;
         return vDom;
+    }
+    renderAfter(){
+        let opts = this.options,
+            that = this;
+        this.$('.input-group-addon').off().on('click', function(event){
+            Lego.UI.modal({
+                type: 'modal',
+                title: '地图选址',
+                content: hx`<maps id="maps_${opts.vid}"></maps>`,
+                isMiddle: true,
+                width: 700,
+                height: 400,
+                components: [{
+                    el: '#maps_' + opts.vid,
+                    mapApi: opts.mapApi,
+                    data: function(){
+                        return opts.data;
+                    }
+                }],
+                onOk(self){
+                    opts.data = self.result || {};
+                    self.close();
+                    that.updateValue();
+                }
+            });
+        });
+        this.updateValue();
+    }
+    updateValue(){
+        let opts = this.options;
+        if(opts.data){
+            let input = this.$('#inputs_' + opts.vid).children('input'),
+                lnglatInput = this.$('#lnglat_' + opts.vid);
+            if(input.length) input.val(opts.data.address || '');
+            if(lnglatInput.length) lnglatInput.val(opts.data.lnglat || '');
+        }
     }
 }
 Lego.components('geolocation', ComView);

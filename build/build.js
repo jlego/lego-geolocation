@@ -26,7 +26,7 @@ if (fs.existsSync(buildStyleFile)) fs.unlinkSync(buildStyleFile);
 
 const resolve = _path => path.resolve(__dirname, '../', _path);
 build([{
-    alias: 'area-picker',
+    alias: 'geolocation',
     entry: 'src/index.js',
     dest: 'dist/index.js'
 }
