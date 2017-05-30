@@ -7,7 +7,7 @@ class View extends Lego.UI.Baseview {
     constructor(opts = {}) {
         const options = {
             mapApi: '',
-            placeholder: '搜索',
+            placeholder: '搜索地址',
             data: {}
         };
         Object.assign(options, opts);
@@ -22,8 +22,8 @@ class View extends Lego.UI.Baseview {
             placeholder: opts.placeholder,
             style: {
                 position: 'absolute',
-                top: 20,
-                left: 20,
+                top: 10,
+                left: 10,
                 width: 350,
             },
             value: opts.data.address || '',

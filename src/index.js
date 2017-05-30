@@ -57,6 +57,7 @@ class ComView extends Lego.UI.Baseview {
                 isMiddle: true,
                 width: 700,
                 height: 400,
+                className: 'map-modal',
                 components: [{
                     el: '#maps_' + opts.vid,
                     mapApi: opts.mapApi,
