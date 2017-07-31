@@ -2,6 +2,8 @@
   width: auto; }
   .lego-geolocation .input-group-addon {
     cursor: pointer; }
+  .lego-geolocation .lego-smallmap {
+    margin-top: 10px; }
 
 .map-div {
   height: 100%;

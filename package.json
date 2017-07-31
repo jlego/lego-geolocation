@@ -1,14 +1,14 @@
 {
-  "name": "legojs-ui-geolocation",
-  "version": "0.0.1",
-  "description": "",
+  "name": "com-geolocation",
+  "version": "0.0.66",
+  "description": "地图选址组件",
   "main": "dist/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "node build/build.js"
   },
   "keywords": [
-    "legojs-ui-geolocation"
+    "com-geolocation"
   ],
   "publishConfig": {
       "registry": "http://npm"

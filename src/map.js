@@ -6,12 +6,35 @@
 class View extends Lego.UI.Baseview {
     constructor(opts = {}) {
         const options = {
-            mapApi: '',
+            mapApi: Lego.config.mapApi,
             placeholder: '搜索地址',
             data: {}
         };
         Object.assign(options, opts);
         super(options);
+    }
+    getLocationByAddress(str){
+        let opts = this.options,
+            that = this;
+        if(this.geocoder){
+            this.geocoder.getLocation(str, function(status, result) {
+                if (status == 'complete' && result.geocodes.length) {
+                    that.marker.setPosition(result.geocodes[0].location);
+                    let point = that.marker.getPosition();
+                    that.map.setCenter(point);
+                    that.map.getCity(function(data) {
+                        opts.context.result = {
+                            address: str,
+                            province: data['province'],
+                            city: data['city'],
+                            area: data['district'],
+                            lng: point.lng,
+                            lat: point.lat
+                        };
+                    });
+                }
+            });
+        }
     }
     components() {
         let opts = this.options,
@@ -22,25 +45,12 @@ class View extends Lego.UI.Baseview {
             placeholder: opts.placeholder,
             style: {
                 position: 'absolute',
-                top: 10,
-                left: 10,
+                top: -46,
+                left: 160,
                 width: 350,
             },
-            value: opts.data.address || '',
-            onChange(self, address) {
-                if(that.geocoder){
-                    that.geocoder.getLocation(address, function(status, result) {
-                        if (status == 'complete' && result.geocodes.length) {
-                            let point = that.marker.getPosition();
-                            that.marker.setPosition(result.geocodes[0].location);
-                            that.map.setCenter(point);
-                            opts.context.result = {
-                                address: address,
-                                lnglat: point.lng + ',' + point.lat
-                            };
-                        }
-                    });
-                }
+            onSearch(self, obj) {
+                that.getLocationByAddress(obj.keyword);
             }
         });
     }
@@ -49,78 +59,106 @@ class View extends Lego.UI.Baseview {
         return hx `
         <div class="map-div">
             <div id="map_container"></div>
-            <inputs id='input_${opts.vid}'></inputs>
+            <search id='input_${opts.vid}'></search>
         </div>`;
     }
     renderAfter() {
         let opts = this.options,
             that = this;
-        function getLocation(){
-            let options = {
-                enableHighAccuracy: true,
-                maximumAge: 1000
+        this.map = new AMap.Map('map_container', {
+            resizeEnable: true,
+            zoom: 14
+        });
+        // 搜索框自动完成功能
+        AMap.plugin(['AMap.Autocomplete','AMap.PlaceSearch'], function(){
+            let autoOptions = {
+                input: that.$(".lego-search-input")[0]//使用联想输入的input的id
             };
-            if(navigator.geolocation){
-                //浏览器支持geolocation
-                navigator.geolocation.getCurrentPosition(onSuccess, onError, options);
-            }else{
-                //浏览器不支持geolocation
+            let autocomplete = new AMap.Autocomplete(autoOptions);
+            let placeSearch = new AMap.PlaceSearch({
+                map: that.map
+            });
+            AMap.event.addListener(autocomplete, "select", function(e){
+                //针对选中的poi实现自己的功能
+                placeSearch.search(e.poi.name);
+            });
+        });
+        if(opts.data){
+            that.map.getCity(function(data) {
+                opts.data.city = data['city'];
+                that.renderMap(opts.data);
+            });
+        }else{
+            this.map.plugin('AMap.Geolocation', function() {
+                geolocation = new AMap.Geolocation({
+                    enableHighAccuracy: true,//是否使用高精度定位，默认:true
+                    timeout: 10000,          //超过10秒后停止定位，默认：无穷大
+                    buttonOffset: new AMap.Pixel(10, 20),//定位按钮与设置的停靠位置的偏移量，默认：Pixel(10, 20)
+                    zoomToAccuracy: true,      //定位成功后调整地图视野范围使定位位置及精度范围视野内可见，默认：false
+                    buttonPosition:'RB'
+                });
+                that.map.addControl(geolocation);
+                geolocation.getCurrentPosition();
+                AMap.event.addListener(geolocation, 'complete', onComplete);//返回定位信息
+                AMap.event.addListener(geolocation, 'error', onError);      //返回定位出错信息
+            });
+            //解析定位结果
+            function onComplete(result) {
+                that.map.getCity(function(data) {
+                    that.renderMap({
+                        city: data['city'],
+                        lng: result.position.getLng(),
+                        lat: result.position.getLat()
+                    });
+                });
+            }
+            //解析定位错误信息
+            function onError(data) {
+                debug.warn(data);
             }
         }
-        //成功时
-        function onSuccess(position){
-            let longitude = position.coords.longitude; //经度
-            let latitude = position.coords.latitude; //纬度
-            that.renderMap(longitude, latitude);
-        }
-        function onError(error){
-            debug.warn(error);
-            // Lego.UI.message('error', error.message);
-            that.renderMap();
-        }
-        if(opts.data.lnglat){
-            this.renderMap(opts.data.lnglat.split(','));
-        }else{
-            getLocation();
-        }
     }
-    renderMap(lng, lat){
+    renderMap(data = {}){
         let that = this,
-            opts = this.options,
-            inputView = Lego.getView('#input_' + opts.vid);
+            opts = this.options;
         if(opts.mapApi){
-            Lego.loadScript(opts.mapApi, function(){
-                that.map = new AMap.Map('map_container', {
-                    resizeEnable: true,
-                    zoom: 14,
-                    center: lng && lat ? new AMap.LngLat(lng, lat) : [114.057954, 22.544367]
+            AMap.plugin('AMap.Geocoder', function() {
+                that.geocoder = new AMap.Geocoder();
+                that.marker = new AMap.Marker({
+                    map: that.map,
+                    bubble: true
                 });
-                AMap.plugin('AMap.Geocoder', function() {
-                    that.geocoder = new AMap.Geocoder();
-                    that.marker = new AMap.Marker({
-                        map: that.map,
-                        bubble: true
-                    });
-                    if(opts.data.lnglat){
-                        that.marker.setPosition(opts.data.lnglat.split(','));
+                if(data.address){
+                    that.getLocationByAddress(data.address);
+                }else{
+                    if(data.lng && data.lat){
+                        that.marker.setPosition([data.lng, data.lat]);
+                        let point = that.marker.getPosition();
+                        that.map.setCenter(point);
                     }
-                    that.map.on('click', function(e) {
-                        that.marker.setPosition(e.lnglat);
-                        that.geocoder.getAddress(e.lnglat, function(status, result) {
-                            // debug.warn(e.lnglat);
-                            if (status == 'complete') {
-                                inputView.options.value = result.regeocode.formattedAddress;
+                }
+                that.map.on('click', function(e) {
+                    that.marker.setPosition(e.lnglat);
+                    that.geocoder.getAddress(e.lnglat, function(status, result) {
+                        if (status == 'complete') {
+                            let inputView = Lego.getView('#input_' + opts.vid);
+                            let address = inputView.options.value = result.regeocode.formattedAddress;
+                            that.map.getCity(function(data) {
                                 opts.context.result = {
-                                    address: inputView.options.value,
-                                    lnglat: e.lnglat.lng + ',' + e.lnglat.lat
+                                    address: address,
+                                    province: data['province'],
+                                    city: data['city'],
+                                    area: data['district'],
+                                    lng: e.lnglat.lng,
+                                    lat: e.lnglat.lat
                                 };
-                            }
-                        })
-                    });
+                            });
+                        }
+                    })
                 });
-            }, 'amap');
+            });
         }
     }
 }
-Lego.components('maps', View);
+Lego.components('lego-maps', View);
 export default View;
