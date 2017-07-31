@@ -1,6 +1,6 @@
 {
-  "name": "com-geolocation",
-  "version": "0.0.66",
+  "name": "lego-geolocation",
+  "version": "0.1.0",
   "description": "地图选址组件",
   "main": "dist/index.js",
   "scripts": {
@@ -8,12 +8,9 @@
     "build": "node build/build.js"
   },
   "keywords": [
-    "com-geolocation"
+    "lego-geolocation"
   ],
-  "publishConfig": {
-      "registry": "http://npm"
-    },
-  "author": "yuronghui",
+  "author": "legojs",
   "license": "MIT",
   "devDependencies": {
     "babel-cli": "^6.18.0",
